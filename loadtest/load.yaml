@@ -1,0 +1,12 @@
+phantom:
+  address: crow-server:8080
+  uris:
+    - /api
+  load_profile:
+    load_type: rps
+    schedule: const(100000, 1m)
+  writelog: all
+console:
+  enabled: true
+telegraf:
+  enabled: false

@@ -11,4 +11,7 @@ CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 Makefile
+
 docker-compose.yml
+loadtest
+.github

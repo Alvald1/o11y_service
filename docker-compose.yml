@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   crow-server:
     build: .
@@ -6,3 +5,23 @@ services:
       - "8080:8080"
     restart: unless-stopped
     container_name: crow-server
+  portainer:
+    image: portainer/portainer-ce:latest
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    restart: unless-stopped
+  yandex-tank:
+    image: yandex/yandex-tank:latest
+    volumes:
+      - ./loadtest:/var/loadtest
+      - $SSH_AUTH_SOCK:/ssh-agent
+    environment:
+      - SSH_AUTH_SOCK=/ssh-agent
+    stdin_open: true
+    tty: true
+
+volumes:
+  portainer_data:
