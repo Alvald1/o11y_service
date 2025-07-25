@@ -4,7 +4,7 @@ phantom:
     - /api
   load_profile:
     load_type: rps
-    schedule: const(160, 1m)
+    schedule: const(1000, 1m)
   writelog: all
 console:
   enabled: true

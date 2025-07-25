@@ -1,6 +1,11 @@
 services:
+  faker:
+    build: ./faker-server
+    container_name: faker
+    ports:
+      - "3000:3000"
   crow-server:
-    build: .
+    build: ./crow-server
     ports:
       - "8080:8080"
     restart: unless-stopped
