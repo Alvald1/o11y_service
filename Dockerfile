@@ -1,9 +1,7 @@
-FROM ubuntu:24.04
+FROM alpine:latest
 
 # Установить необходимые пакеты
-RUN apt-get update && \
-    apt-get install -y build-essential cmake git libboost-all-dev && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache build-base cmake git boost-dev
 
 # Копировать исходники
 WORKDIR /app
@@ -12,8 +10,6 @@ COPY . /app
 # Собрать проект
 RUN mkdir build && cd build && cmake .. && make
 
-# Открыть порт
 EXPOSE 8080
 
-# Запустить сервер
 CMD ["/app/build/main"]
