@@ -20,5 +20,20 @@ add_executable(main main.cpp)
 # Crow — header-only, просто добавляем include
 target_include_directories(main PRIVATE ${crow_SOURCE_DIR}/include)
 
+
 # Добавляем флаги компилятора
 target_compile_options(main PRIVATE -Wall -Wextra)
+
+set(REDIS_PLUS_PLUS_BUILD_TEST OFF)
+include(FetchContent)
+FetchContent_Declare(
+  redis-plus-plus
+  GIT_REPOSITORY https://github.com/sewenew/redis-plus-plus.git
+  GIT_TAG 1.3.11
+)
+FetchContent_MakeAvailable(redis-plus-plus)
+target_include_directories(main PRIVATE ${redis-plus-plus_SOURCE_DIR}/include /usr/include/hiredis)
+
+# hiredis
+find_library(HIREDIS_LIB hiredis)
+target_link_libraries(main PRIVATE ${HIREDIS_LIB} redis++)

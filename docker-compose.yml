@@ -5,6 +5,15 @@ services:
       - "8080:8080"
     restart: unless-stopped
     container_name: crow-server
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_MAXMEMORY=1mb
+      - REDIS_MAXMEMORY_POLICY=allkeys-lru
+    restart: unless-stopped
+    container_name: redis
   portainer:
     image: portainer/portainer-ce:latest
     ports:
@@ -22,6 +31,8 @@ services:
       - SSH_AUTH_SOCK=/ssh-agent
     stdin_open: true
     tty: true
+    profiles:
+      - loadtest
 
 volumes:
   portainer_data:

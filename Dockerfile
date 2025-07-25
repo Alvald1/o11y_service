@@ -1,14 +1,14 @@
 FROM alpine:latest
 
 # Установить необходимые пакеты
-RUN apk add --no-cache build-base cmake git boost-dev
+RUN apk add --no-cache build-base cmake git boost-dev hiredis-dev
 
 # Копировать исходники
 WORKDIR /app
 COPY . /app
 
 # Собрать проект
-RUN mkdir build && cd build && cmake .. && make
+RUN mkdir build && cd build && cmake .. && make -j$(nproc)
 
 EXPOSE 8080
 
