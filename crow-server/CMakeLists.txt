@@ -1,13 +1,30 @@
+
 cmake_minimum_required(VERSION 3.10)
+
+# Включаем кеширование исходников и артефактов FetchContent
+if(DEFINED ENV{FETCHCONTENT_BASE_DIR})
+  set(FETCHCONTENT_BASE_DIR "$ENV{FETCHCONTENT_BASE_DIR}" CACHE PATH "FetchContent base dir")
+else()
+  set(FETCHCONTENT_BASE_DIR "${CMAKE_BINARY_DIR}/.fc_cache" CACHE PATH "FetchContent base dir")
+endif()
+set(FETCHCONTENT_QUIET OFF)
+
 
 
 project(crow_hello_world)
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_STANDARD 17)
 
+
 # Crow is header-only, but needs Boost
 find_package(Boost REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
+
+# Включаем ccache для кеширования компиляции, если доступен
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+  set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+endif()
 
 # Download Crow if not present
 include(FetchContent)
@@ -19,14 +36,10 @@ FetchContent_Declare(
 set(CROW_BUILD_TESTS OFF)
 FetchContent_MakeAvailable(crow)
 
-add_executable(main main.cpp)
-# Crow — header-only, просто добавляем include
-target_include_directories(main PRIVATE ${crow_SOURCE_DIR}/include)
 
 
-# Добавляем флаги компилятора
-target_compile_options(main PRIVATE -Wall -Wextra)
 
+# --- redis-plus-plus ---
 set(REDIS_PLUS_PLUS_BUILD_TEST OFF)
 include(FetchContent)
 FetchContent_Declare(
@@ -36,18 +49,8 @@ FetchContent_Declare(
 )
 set(REDIS_PLUS_PLUS_BUILD_TEST OFF)
 FetchContent_MakeAvailable(redis-plus-plus)
-target_include_directories(main PRIVATE ${redis-plus-plus_SOURCE_DIR}/include /usr/include/hiredis)
 
-# hiredis
-find_library(HIREDIS_LIB hiredis)
-target_link_libraries(main PRIVATE ${HIREDIS_LIB} redis++)
-
-# curl
-find_package(CURL REQUIRED)
-target_include_directories(main PRIVATE ${CURL_INCLUDE_DIRS})
-target_link_libraries(main PRIVATE ${CURL_LIBRARIES})
-
-# spdlog
+# --- spdlog ---
 include(FetchContent)
 FetchContent_Declare(
   spdlog
@@ -58,4 +61,34 @@ set(SPDLOG_BUILD_TESTS OFF)
 set(SPDLOG_BUILD_SHARED ON)
 set(SPDLOG_FMT_EXTERNAL OFF)
 FetchContent_MakeAvailable(spdlog)
-target_link_libraries(main PRIVATE spdlog::spdlog)
+
+# Цель для сборки только зависимостей (без install)
+add_custom_target(deps_only
+  COMMAND ${CMAKE_COMMAND} --build . --target redis++ spdlog
+  COMMENT "Build all dependencies only"
+)
+
+
+
+# Основная цель проекта (только если есть main.cpp)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
+  add_executable(main main.cpp)
+  # Crow — header-only, просто добавляем include
+  target_include_directories(main PRIVATE ${crow_SOURCE_DIR}/include)
+
+  # Добавляем флаги компилятора
+  target_compile_options(main PRIVATE -Wall -Wextra)
+
+  target_include_directories(main PRIVATE ${redis-plus-plus_SOURCE_DIR}/include /usr/include/hiredis)
+
+  # hiredis
+  find_library(HIREDIS_LIB hiredis)
+  target_link_libraries(main PRIVATE ${HIREDIS_LIB} redis++)
+
+  # curl
+  find_package(CURL REQUIRED)
+  target_include_directories(main PRIVATE ${CURL_INCLUDE_DIRS})
+  target_link_libraries(main PRIVATE ${CURL_LIBRARIES})
+
+  target_link_libraries(main PRIVATE spdlog::spdlog)
+endif()
