@@ -5,16 +5,49 @@ scrape_configs:
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
+    relabel_configs:
+      - source_labels: ['__address__']
+        target_label: 'job'
+        replacement: 'prometheus'
 
 
   - job_name: 'node-exporter-crow'
     static_configs:
-      - targets: ['node-exporter-crow:9101']
+      - targets: ['node-exporter-crow:9100']
+    relabel_configs:
+      - source_labels: ['__address__']
+        target_label: 'job'
+        replacement: 'node-exporter-crow'
 
   - job_name: 'node-exporter-faker'
     static_configs:
-      - targets: ['node-exporter-faker:9102']
+      - targets: ['node-exporter-faker:9100']
+    relabel_configs:
+      - source_labels: ['__address__']
+        target_label: 'job'
+        replacement: 'node-exporter-faker'
+
+  - job_name: 'node-exporter-redis'
+    static_configs:
+      - targets: ['node-exporter-redis:9100']
+    relabel_configs:
+      - source_labels: ['__address__']
+        target_label: 'job'
+        replacement: 'node-exporter-redis'
+
+
+  - job_name: 'crow-server-metrics'
+    static_configs:
+      - targets: ['crow-server:8081']
+    relabel_configs:
+      - source_labels: ['__address__']
+        target_label: 'job'
+        replacement: 'crow-server-metrics'
 
   - job_name: 'redis-exporter'
     static_configs:
       - targets: ['redis-exporter:9121']
+    relabel_configs:
+      - source_labels: ['__address__']
+        target_label: 'job'
+        replacement: 'redis-exporter'

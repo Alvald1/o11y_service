@@ -88,6 +88,20 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(nlohmann_json)
 
 
+# prometheus-cpp
+include(FetchContent)
+FetchContent_Declare(
+  prometheus-cpp
+  GIT_REPOSITORY https://github.com/jupp0r/prometheus-cpp.git
+  GIT_TAG v1.2.4
+)
+set(ENABLE_PULL 1)
+set(ENABLE_PUSH 0)
+set(ENABLE_COMPRESSION 0)
+set(ENABLE_TESTING 0)
+FetchContent_MakeAvailable(prometheus-cpp)
+
+
 # Основная цель проекта (только если есть main.cpp)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
   add_executable(main main.cpp)
@@ -113,4 +127,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
 
   # nlohmann_json (header-only)
   target_include_directories(main PRIVATE ${nlohmann_json_SOURCE_DIR}/include)
+
+  # prometheus-cpp
+  target_link_libraries(main PRIVATE prometheus-cpp::core prometheus-cpp::pull)
 endif()

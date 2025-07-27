@@ -11,6 +11,7 @@ services:
       dockerfile: crow-server/Dockerfile
     ports:
       - "8080:8080"
+      - "8081:8081"
     restart: unless-stopped
     container_name: crow-server
     
@@ -74,6 +75,19 @@ services:
       - '--path.sysfs=/host/sys'
     restart: unless-stopped
 
+  node-exporter-redis:
+    image: prom/node-exporter:latest
+    container_name: node-exporter-redis
+    ports:
+      - "9103:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+    restart: unless-stopped
+
   redis-exporter:
     image: bitnami/redis-exporter:latest
     container_name: redis-exporter
@@ -83,6 +97,21 @@ services:
       - "9121:9121"
     restart: unless-stopped
 
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3002:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-dashboards:/var/lib/grafana/dashboards:ro
+      - ./grafana-dashboards-provisioning.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./grafana-datasources-provisioning.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    restart: unless-stopped
+
 
 volumes:
   portainer_data:
+  grafana_data:

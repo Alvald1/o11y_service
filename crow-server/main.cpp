@@ -9,6 +9,11 @@
 #include "crow.h"
 #include <cmark.h>
 
+// prometheus-cpp
+#include <prometheus/exposer.h>
+#include <prometheus/registry.h>
+#include <prometheus/histogram.h>
+#include <prometheus/counter.h>
 #include <spdlog/spdlog.h>
 // Логируем только в stdout/stderr (для Loki Docker logging driver)
 
@@ -44,89 +49,104 @@ int main()
         config_file >> config_json;
     }
 
+    // prometheus-cpp: создаём экспортер и реестр
+    prometheus::Exposer exposer{"0.0.0.0:8081"};
+    auto registry = std::make_shared<prometheus::Registry>();
+
+    // Histogram для latency (Prometheus сам создаёт *_count, *_sum, *_bucket)
+    auto &latency_family = prometheus::BuildHistogram()
+                               .Name("http_request_duration_seconds")
+                               .Help("HTTP request latency in seconds")
+                               .Register(*registry);
+    auto &latency_hist = latency_family.Add({}, prometheus::Histogram::BucketBoundaries{0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10});
+
+    auto &http_requests_counter_family = prometheus::BuildCounter()
+                                             .Name("http_requests_total")
+                                             .Help("Number of HTTP requests")
+                                             .Register(*registry);
+    auto &http_requests_counter = http_requests_counter_family.Add({});
+
+    exposer.RegisterCollectable(registry);
+
     crow::SimpleApp app;
     app.loglevel(crow::LogLevel::Info); // Crow будет выводить только INFO и выше
 
     CROW_ROUTE(app, "/api")([&]()
                             {
-        try
-        {
+        http_requests_counter.Increment();
+        auto start = std::chrono::steady_clock::now();
+        std::string key, val_str, json_result;
+        sw::redis::Redis *redis = nullptr;
+        bool error = false;
+        std::string error_msg;
+        try {
             std::random_device rd;
             int random_value = rd();
-
-            sw::redis::Redis *redis = nullptr;
-            try
-            {
+            key = "key_" + std::to_string(random_value);
+            try {
                 spdlog::info("Connected to Redis");
                 redis = new sw::redis::Redis("tcp://redis:6379");
-            }
-            catch (const std::exception &e)
-            {
+            } catch (const std::exception &e) {
                 spdlog::error("Redis connect error: {}", e.what());
-                return crow::response(500, std::string("Redis connect error: ") + e.what());
+                error = true;
+                error_msg = std::string("Redis connect error: ") + e.what();
+                goto finish;
             }
-
-            std::string key = "key_" + std::to_string(random_value);
-            std::string json_result;
-
             CURL *curl = curl_easy_init();
-            if (curl)
-            {
+            if (curl) {
                 std::string faker_url = get_config_value(config_json, "faker_url");
                 curl_easy_setopt(curl, CURLOPT_URL, faker_url.c_str());
                 curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
                 curl_easy_setopt(curl, CURLOPT_WRITEDATA, &json_result);
                 CURLcode res = curl_easy_perform(curl);
                 curl_easy_cleanup(curl);
-                if (res != CURLE_OK)
-                {
+                if (res != CURLE_OK) {
                     spdlog::error("Failed to fetch JSON: {}", curl_easy_strerror(res));
-                    delete redis;
-                    return crow::response(500, "Failed to fetch JSON: " + std::string(curl_easy_strerror(res)));
+                    error = true;
+                    error_msg = "Failed to fetch JSON: " + std::string(curl_easy_strerror(res));
+                    goto finish;
                 }
-            }
-            else
-            {
+            } else {
                 spdlog::error("Failed to init curl");
-                delete redis;
-                return crow::response(500, "Failed to init curl");
+                error = true;
+                error_msg = "Failed to init curl";
+                goto finish;
             }
-
             spdlog::info("Redis SET key: {}", key);
-            try
-            {
+            try {
                 redis->set(key, json_result);
-            }
-            catch (const std::exception &e)
-            {
+            } catch (const std::exception &e) {
                 spdlog::error("Redis SET error: {}", e.what());
-                delete redis;
-                return crow::response(500, std::string("Redis SET error: ") + e.what());
+                error = true;
+                error_msg = std::string("Redis SET error: ") + e.what();
+                goto finish;
             }
-
-            std::string val_str;
             spdlog::info("Redis GET key: {}", key);
-            try
-            {
+            try {
                 auto val = redis->get(key);
                 val_str = val ? *val : "";
-            }
-            catch (const std::exception &e)
-            {
+            } catch (const std::exception &e) {
                 spdlog::error("Redis GET error: {}", e.what());
-                delete redis;
-                return crow::response(500, std::string("Redis GET error: ") + e.what());
+                error = true;
+                error_msg = std::string("Redis GET error: ") + e.what();
+                goto finish;
             }
-
-            delete redis;
+        } catch (const std::exception &e) {
+            spdlog::error("Exception: {}", e.what());
+            error = true;
+            error_msg = e.what();
+        }
+    finish:
+        if (redis) delete redis;
+        auto end = std::chrono::steady_clock::now();
+        double duration = std::chrono::duration<double>(end - start).count();
+        latency_hist.Observe(duration);
+        if (error) {
+            return crow::response(500, error_msg);
+        } else {
             std::stringstream ss;
             ss << "{\"key\":\"" << key << "\",\"value\":\"" << val_str << "\"}";
             return crow::response(200, ss.str());
-        }
-        catch (const std::exception &e)
-        {
-            spdlog::error("Exception: {}", e.what());
-            return crow::response(500, e.what());
         } });
 
     // Прокси-эндпоинт для остановки теста

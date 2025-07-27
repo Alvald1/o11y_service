@@ -3,7 +3,7 @@
 FROM alpine:latest
 
 # Установить необходимые пакеты
-RUN apk add --no-cache build-base cmake git boost-dev hiredis-dev curl-dev fmt-dev cmark-dev
+RUN apk add --no-cache build-base cmake git boost-dev hiredis-dev curl-dev fmt-dev cmark-dev openssl-dev
 
 # Создать кеш для FetchContent
 ENV FETCHCONTENT_BASE_DIR=/fc_cache
