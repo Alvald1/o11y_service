@@ -5,6 +5,7 @@
     "type": "module",
     "dependencies": {
         "express": "^4.18.2",
-        "@faker-js/faker": "^8.2.0"
+        "@faker-js/faker": "^8.2.0",
+        "winston": "^3.10.0"
     }
 }
