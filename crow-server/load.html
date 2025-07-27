@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Нагрузочное тестирование</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            max-width: 600px;
+            margin: auto;
+            padding: 2em;
+        }
+
+        label {
+            display: block;
+            margin-top: 1em;
+        }
+
+        input,
+        button {
+            font-size: 1em;
+            padding: 0.5em;
+        }
+
+        .result {
+            margin-top: 2em;
+            background: #f4f4f4;
+            padding: 1em;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Нагрузочное тестирование</h1>
+    <form id="loadForm">
+        <label>RPS (запросов в секунду):
+            <input type="number" name="rps" min="1" max="10000" value="100" required>
+        </label>
+        <label>Время (например, 60s, 5m, 2h):
+            <input type="text" name="duration" pattern="^[0-9]+[smh]$" value="60s" required
+                title="Только число и одна буква: s, m или h (например, 60s, 5m, 2h)">
+        </label>
+        <button type="submit">Запустить</button>
+    </form>
+    <div class="result" id="result"></div>
+    <button type="button" id="getReport">Показать статистику</button>
+    <div class="result" id="report"></div>
+    <script>
+        document.getElementById('loadForm').onsubmit = async function (e) {
+            e.preventDefault();
+            const rps = this.rps.value;
+            const duration = this.duration.value.trim();
+            if (!/^[0-9]+[smh]$/.test(duration)) {
+                document.getElementById('result').textContent = 'Ошибка: формат времени — только число и одна буква: s, m или h (например, 60s, 5m, 2h)';
+                return;
+            }
+            document.getElementById('result').textContent = 'Запуск...';
+            const resp = await fetch('/load', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rps, duration })
+            });
+            const data = await resp.json();
+            document.getElementById('result').textContent = data.message || JSON.stringify(data);
+            updateStatus();
+        };
+
+
+        async function updateReport() {
+            try {
+                const resp = await fetch('/load/report');
+                const data = await resp.json();
+                if (data.message) {
+                    document.getElementById('report').textContent = data.message;
+                    return;
+                }
+                // Парсим и красиво выводим ключевые метрики
+                let html = '';
+                const overall = data?.data?.overall;
+                const rps = data?.data?.counted_rps;
+                if (overall) {
+                    html += `<b>RPS:</b> ${rps ?? '-'}<br>`;
+                    html += `<b>Время (мс):</b><br>`;
+                    html += `&nbsp;&nbsp;min: ${overall.interval_real?.min ?? '-'}<br>`;
+                    html += `&nbsp;&nbsp;max: ${overall.interval_real?.max ?? '-'}<br>`;
+                    html += `&nbsp;&nbsp;среднее: ${Math.round((overall.interval_real?.total ?? 0) / (overall.interval_real?.len || 1))}<br>`;
+                    if (overall.interval_real?.q) {
+                        html += `<b>Квантили (мс):</b><br>`;
+                        overall.interval_real.q.q.forEach((q, i) => {
+                            html += `&nbsp;&nbsp;${q}%: ${overall.interval_real.q.value[i]}<br>`;
+                        });
+                    }
+                } else {
+                    html = '<i>Нет данных</i>';
+                }
+                document.getElementById('report').innerHTML = html;
+            } catch (e) {
+                document.getElementById('report').textContent = 'Ошибка получения статистики.';
+            }
+        }
+
+        // Кнопка — ручной вызов
+        document.getElementById('getReport').onclick = updateReport;
+        // Автообновление каждые 1 сек
+        setInterval(updateReport, 1000);
+    </script>
+</body>
+
+</html>

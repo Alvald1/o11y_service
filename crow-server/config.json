@@ -1,0 +1,4 @@
+{
+    "faker_url": "http://faker:3000/user",
+    "tank_listener_url": "http://yandex-tank:3001/run-tank"
+}

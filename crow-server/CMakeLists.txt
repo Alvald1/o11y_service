@@ -77,6 +77,17 @@ add_custom_target(deps_only
 
 
 
+###########################################################
+# nlohmann_json
+include(FetchContent)
+FetchContent_Declare(
+  nlohmann_json
+  GIT_REPOSITORY https://github.com/nlohmann/json.git
+  GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(nlohmann_json)
+
+
 # Основная цель проекта (только если есть main.cpp)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
   add_executable(main main.cpp)
@@ -99,4 +110,7 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
 
   target_include_directories(main PRIVATE ${CMARK_INCLUDE_DIR})
   target_link_libraries(main PRIVATE spdlog::spdlog ${CMARK_LIB})
+
+  # nlohmann_json (header-only)
+  target_include_directories(main PRIVATE ${nlohmann_json_SOURCE_DIR}/include)
 endif()

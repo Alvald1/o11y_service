@@ -1,3 +1,5 @@
+# Install nlohmann_json (header-only, via CMake FetchContent)
+# No system package needed, CMake will fetch it automatically
 FROM alpine:latest
 
 # Установить необходимые пакеты
@@ -23,6 +25,7 @@ COPY crow-server/main.cpp /app
 RUN cd build && cmake .. && cmake --build . --target main -j$(nproc)
 
 COPY README.md /app
+COPY crow-server/ /app
 
 EXPOSE 8080
 
