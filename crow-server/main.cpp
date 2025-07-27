@@ -1,3 +1,4 @@
+
 #include <curl/curl.h>
 #include <regex>
 
@@ -128,6 +129,43 @@ int main()
             return crow::response(500, e.what());
         } });
 
+    // Прокси-эндпоинт для остановки теста
+    CROW_ROUTE(app, "/load/stop").methods("POST"_method)([&]()
+                                                         {
+        try {
+            std::string tank_listener_url = get_config_value(config_json, "tank_listener_url");
+            // Заменить путь на /stop-tank
+            std::string url = tank_listener_url;
+            size_t pos = url.find("/run-tank");
+            if (pos != std::string::npos) {
+                url.replace(pos, std::string("/run-tank").size(), "/stop-tank");
+            } else {
+                url = "http://yandex-tank:3001/stop-tank";
+            }
+            std::string response_string;
+            CURL *curl = curl_easy_init();
+            if (!curl) {
+                return crow::response(500, R"({\"message\":\"Ошибка инициализации curl\"})");
+            }
+            struct curl_slist *headers = nullptr;
+            headers = curl_slist_append(headers, "Content-Type: application/json");
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            curl_easy_setopt(curl, CURLOPT_POST, 1L);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "{}");
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
+            CURLcode res = curl_easy_perform(curl);
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
+            if (res != CURLE_OK) {
+                return crow::response(500, std::string("{\"message\":\"Ошибка запроса к tank-listener: ") + curl_easy_strerror(res) + "\"}");
+            }
+            return crow::response(200, response_string);
+        } catch (const std::exception& e) {
+            return crow::response(500, std::string("{\"message\":\"") + e.what() + "\"}");
+        } });
+
     CROW_ROUTE(app, "/docs")([&]()
                              {
         std::ifstream file("README.md");
@@ -244,6 +282,34 @@ int main()
         } catch (const std::exception& e) {
             return crow::response(500, std::string("{\"message\":\"") + e.what() + "\"}");
         } });
-
+    CROW_ROUTE(app, "/load/status")([&]()
+                                    {
+        try {
+            std::string tank_listener_url = get_config_value(config_json, "tank_listener_url");
+            // Заменить путь на /test-status
+            std::string url = tank_listener_url;
+            size_t pos = url.find("/run-tank");
+            if (pos != std::string::npos) {
+                url.replace(pos, std::string("/run-tank").size(), "/test-status");
+            } else {
+                url = "http://yandex-tank:3001/test-status";
+            }
+            std::string response_string;
+            CURL *curl = curl_easy_init();
+            if (!curl) {
+                return crow::response(500, R"({\"message\":\"Ошибка инициализации curl\"})");
+            }
+            curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
+            CURLcode res = curl_easy_perform(curl);
+            curl_easy_cleanup(curl);
+            if (res != CURLE_OK) {
+                return crow::response(500, std::string("{\"message\":\"Ошибка запроса к tank-listener: ") + curl_easy_strerror(res) + "\"}");
+            }
+            return crow::response(200, response_string);
+        } catch (const std::exception& e) {
+            return crow::response(500, std::string("{\"message\":\"") + e.what() + "\"}");
+        } });
     app.port(8080).multithreaded().run();
 }

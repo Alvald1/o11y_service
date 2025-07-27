@@ -44,9 +44,34 @@
         <button type="submit">Запустить</button>
     </form>
     <div class="result" id="result"></div>
-    <button type="button" id="getReport">Показать статистику</button>
+    <button type="button" id="stopTest">Завершить тест</button>
     <div class="result" id="report"></div>
     <script>
+        // Элемент для статуса
+        const statusDiv = document.getElementById('status');
+
+        async function updateStatus() {
+            try {
+                const resp = await fetch('/load/status');
+                const data = await resp.json();
+                // Корректно обрабатываем только true/false, всё остальное считаем "не запущен"
+                if (typeof data.running === 'boolean') {
+                    if (data.running) {
+                        statusDiv.innerHTML = '<b>Статус:</b> <span style="color:green">Тест выполняется</span>';
+                    } else {
+                        statusDiv.innerHTML = '<b>Статус:</b> <span style="color:#888">Тест не запущен</span>';
+                    }
+                } else if (data.message) {
+                    statusDiv.innerHTML = '<b>Статус:</b> ' + data.message;
+                } else {
+                    statusDiv.innerHTML = '<b>Статус:</b> <span style="color:#888">Тест не запущен</span>';
+                }
+            } catch (e) {
+                // Любая ошибка получения статуса — "Тест не запущен"
+                statusDiv.innerHTML = '<b>Статус:</b> <span style="color:#888">Тест не запущен</span>';
+            }
+        }
+
         document.getElementById('loadForm').onsubmit = async function (e) {
             e.preventDefault();
             const rps = this.rps.value;
@@ -71,9 +96,21 @@
             try {
                 const resp = await fetch('/load/report');
                 const data = await resp.json();
+                // Если ошибка "Нет отчётов" или "test_data.log не найден" или ошибка чтения отчёта с ENOENT, не выводим ошибку, а просто "Нет данных"
                 if (data.message) {
-                    document.getElementById('report').textContent = data.message;
-                    return;
+                    if (
+                        data.message.includes('Нет отчётов') ||
+                        data.message.includes('test_data.log не найден') ||
+                        data.message.includes('test_data.log пуст') ||
+                        data.message.includes('Ошибка чтения отчёта') &&
+                        (data.message.includes('No such file or directory') || data.message.includes('нет такого файла'))
+                    ) {
+                        document.getElementById('report').innerHTML = '<i>Нет данных</i>';
+                        return;
+                    } else {
+                        document.getElementById('report').textContent = data.message;
+                        return;
+                    }
                 }
                 // Парсим и красиво выводим ключевые метрики
                 let html = '';
@@ -100,10 +137,63 @@
             }
         }
 
-        // Кнопка — ручной вызов
-        document.getElementById('getReport').onclick = updateReport;
+        // Кнопка завершения теста
+        document.getElementById('stopTest').onclick = async function () {
+            document.getElementById('result').textContent = 'Остановка теста...';
+            try {
+                const resp = await fetch('/load/stop', { method: 'POST' });
+                const data = await resp.json();
+                document.getElementById('result').textContent = data.message || JSON.stringify(data);
+                // Очищаем блок статистики после остановки
+                document.getElementById('report').innerHTML = '';
+                updateStatus();
+            } catch (e) {
+                document.getElementById('result').textContent = 'Ошибка завершения теста.';
+                document.getElementById('report').innerHTML = '';
+                updateStatus();
+            }
+        };
         // Автообновление каждые 1 сек
-        setInterval(updateReport, 1000);
+        // Управление автообновлением статистики только когда тест работает
+        let testRunning = false;
+        async function periodicUpdate() {
+            await updateStatus();
+            if (testRunning) {
+                await updateReport();
+            } else {
+                // Если тест не работает, очищаем статистику (опционально)
+                // document.getElementById('report').innerHTML = '<i>Нет данных</i>';
+            }
+        }
+        // Переопределяем updateStatus чтобы обновлять testRunning
+        async function updateStatus() {
+            try {
+                const resp = await fetch('/load/status');
+                const data = await resp.json();
+                const resultDiv = document.getElementById('result');
+                if (typeof data.running === 'boolean') {
+                    testRunning = data.running;
+                    if (data.running) {
+                        resultDiv.innerHTML = '<b>Статус:</b> <span style="color:green">Тест выполняется</span>';
+                    } else {
+                        resultDiv.innerHTML = '<b>Статус:</b> <span style="color:#888">Тест не запущен</span>';
+                    }
+                } else if (data.message) {
+                    testRunning = false;
+                    resultDiv.innerHTML = '<b>Статус:</b> ' + data.message;
+                } else {
+                    testRunning = false;
+                    resultDiv.innerHTML = '<b>Статус:</b> <span style="color:#888">Тест не запущен</span>';
+                }
+            } catch (e) {
+                testRunning = false;
+                statusDiv.innerHTML = '<b>Статус:</b> <span style="color:#888">Тест не запущен</span>';
+            }
+        }
+
+        setInterval(periodicUpdate, 1000);
+        // Первичная инициализация
+        periodicUpdate();
     </script>
 </body>
 
