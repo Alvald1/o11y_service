@@ -1,7 +1,7 @@
 FROM alpine:latest
 
 # Установить необходимые пакеты
-RUN apk add --no-cache build-base cmake git boost-dev hiredis-dev curl-dev
+RUN apk add --no-cache build-base cmake git boost-dev hiredis-dev curl-dev fmt-dev
 
 # Копировать исходники
 WORKDIR /app

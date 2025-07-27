@@ -16,6 +16,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/CrowCpp/crow.git
   GIT_TAG v1.0+1
 )
+set(CROW_BUILD_TESTS OFF)
 FetchContent_MakeAvailable(crow)
 
 add_executable(main main.cpp)
@@ -33,6 +34,7 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/sewenew/redis-plus-plus.git
   GIT_TAG 1.3.11
 )
+set(REDIS_PLUS_PLUS_BUILD_TEST OFF)
 FetchContent_MakeAvailable(redis-plus-plus)
 target_include_directories(main PRIVATE ${redis-plus-plus_SOURCE_DIR}/include /usr/include/hiredis)
 
@@ -44,3 +46,16 @@ target_link_libraries(main PRIVATE ${HIREDIS_LIB} redis++)
 find_package(CURL REQUIRED)
 target_include_directories(main PRIVATE ${CURL_INCLUDE_DIRS})
 target_link_libraries(main PRIVATE ${CURL_LIBRARIES})
+
+# spdlog
+include(FetchContent)
+FetchContent_Declare(
+  spdlog
+  GIT_REPOSITORY https://github.com/gabime/spdlog.git
+  GIT_TAG v1.13.0
+)
+set(SPDLOG_BUILD_TESTS OFF)
+set(SPDLOG_BUILD_SHARED ON)
+set(SPDLOG_FMT_EXTERNAL OFF)
+FetchContent_MakeAvailable(spdlog)
+target_link_libraries(main PRIVATE spdlog::spdlog)
