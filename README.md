@@ -1,4 +1,3 @@
-
 # Микросервисная нагрузочная платформа
 
 ## Описание
@@ -31,6 +30,8 @@
    - Faker API: http://localhost:3000/user
    - Portainer: http://localhost:9000
    - Redis: localhost:6379
+   - Grafana: http://localhost:3002/
+   - Prometheus: http://localhost:9090/
 
 ## Описание сервисов
 
@@ -76,6 +77,26 @@
 - Node.js: express, @faker-js/faker, winston
 - Docker images: redis, portainer/portainer-ce, yandex/yandex-tank
 
+
+## Мониторинг и метрики
+
+- **Prometheus** (http://localhost:9090/) собирает метрики с crow-server (порт 8081) и других сервисов.
+- **Grafana** (http://localhost:3002/) визуализирует метрики (RPS, latency percentiles, ошибки и др.).
+- Основные метрики crow-server:
+  - `http_request_duration_seconds` — histogram (latency, автоматически создаёт *_count, *_sum, *_bucket)
+  - `http_requests_total` — counter (общее количество HTTP-запросов)
+
+### Пример запроса к метрикам
+
+```sh
+curl http://localhost:8081/metrics
+```
+
+### Пример запроса RPS в Prometheus/Grafana
+
+```
+sum(rate(http_request_duration_seconds_count{job="crow-server-metrics"}[2s]))
+```
 
 ## Пример запроса
 
