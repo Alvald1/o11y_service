@@ -6,7 +6,9 @@ services:
       - "3000:3000"
     
   crow-server:
-    build: ./crow-server
+    build:
+      context: .
+      dockerfile: crow-server/Dockerfile
     ports:
       - "8080:8080"
     restart: unless-stopped

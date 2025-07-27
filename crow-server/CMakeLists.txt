@@ -20,6 +20,13 @@ set(CMAKE_CXX_STANDARD 17)
 find_package(Boost REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 
+# --- cmark (system) ---
+find_path(CMARK_INCLUDE_DIR cmark.h)
+find_library(CMARK_LIB cmark)
+if(NOT CMARK_INCLUDE_DIR OR NOT CMARK_LIB)
+  message(FATAL_ERROR "cmark library not found. Please install libcmark-dev (Debian/Ubuntu) or libcmark (Alpine).")
+endif()
+
 # Включаем ccache для кеширования компиляции, если доступен
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -90,5 +97,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/main.cpp")
   target_include_directories(main PRIVATE ${CURL_INCLUDE_DIRS})
   target_link_libraries(main PRIVATE ${CURL_LIBRARIES})
 
-  target_link_libraries(main PRIVATE spdlog::spdlog)
+  target_include_directories(main PRIVATE ${CMARK_INCLUDE_DIR})
+  target_link_libraries(main PRIVATE spdlog::spdlog ${CMARK_LIB})
 endif()

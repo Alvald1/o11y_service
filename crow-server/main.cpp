@@ -1,7 +1,8 @@
-#include "crow.h"
 #include <curl/curl.h>
 #include <sw/redis++/redis++.h>
 #include <sstream>
+#include "crow.h"
+#include <cmark.h>
 
 #include <spdlog/spdlog.h>
 // Логируем только в stdout/stderr (для Loki Docker logging driver)
@@ -63,42 +64,62 @@ int main()
                 return crow::response(500, "Failed to init curl");
             }
 
-                spdlog::info("Redis SET key: {}", key);
-                try
-                {
-                    redis->set(key, json_result);
-                }
-                catch (const std::exception &e)
-                {
-                    spdlog::error("Redis SET error: {}", e.what());
-                    delete redis;
-                    return crow::response(500, std::string("Redis SET error: ") + e.what());
-                }
-
-                std::string val_str;
-                spdlog::info("Redis GET key: {}", key);
-                try
-                {
-                    auto val = redis->get(key);
-                    val_str = val ? *val : "";
-                }
-                catch (const std::exception &e)
-                {
-                    spdlog::error("Redis GET error: {}", e.what());
-                    delete redis;
-                    return crow::response(500, std::string("Redis GET error: ") + e.what());
-                }
-
-                delete redis;
-                std::stringstream ss;
-                ss << "{\"key\":\"" << key << "\",\"value\":\"" << val_str << "\"}";
-                return crow::response(200, ss.str());
+            spdlog::info("Redis SET key: {}", key);
+            try
+            {
+                redis->set(key, json_result);
             }
             catch (const std::exception &e)
             {
-                spdlog::error("Exception: {}", e.what());
-                return crow::response(500, e.what());
-            } });
+                spdlog::error("Redis SET error: {}", e.what());
+                delete redis;
+                return crow::response(500, std::string("Redis SET error: ") + e.what());
+            }
+
+            std::string val_str;
+            spdlog::info("Redis GET key: {}", key);
+            try
+            {
+                auto val = redis->get(key);
+                val_str = val ? *val : "";
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::error("Redis GET error: {}", e.what());
+                delete redis;
+                return crow::response(500, std::string("Redis GET error: ") + e.what());
+            }
+
+            delete redis;
+            std::stringstream ss;
+            ss << "{\"key\":\"" << key << "\",\"value\":\"" << val_str << "\"}";
+            return crow::response(200, ss.str());
+        }
+        catch (const std::exception &e)
+        {
+            spdlog::error("Exception: {}", e.what());
+            return crow::response(500, e.what());
+        } });
+
+    CROW_ROUTE(app, "/docs")([]()
+                             {
+        std::ifstream file("README.md");
+        if (!file.is_open()) {
+            return crow::response(500, "Could not open documentation file.");
+        }
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        file.close();
+        std::string markdown = buffer.str();
+
+        char *html_c = cmark_markdown_to_html(markdown.c_str(), markdown.size(), CMARK_OPT_DEFAULT);
+        std::string html = "<html><head><meta charset='utf-8'><title>Документация</title>"
+            "<style>body{font-family:sans-serif;max-width:800px;margin:auto;padding:2em;}pre{background:#f4f4f4;padding:1em;}code{background:#eee;padding:2px 4px;}</style>"
+            "</head><body>";
+        html += html_c;
+        html += "</body></html>";
+        free(html_c);
+        return crow::response(200, html); });
 
     app.port(8080).multithreaded().run();
 }
