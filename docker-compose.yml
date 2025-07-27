@@ -4,12 +4,14 @@ services:
     container_name: faker
     ports:
       - "3000:3000"
+    
   crow-server:
     build: ./crow-server
     ports:
       - "8080:8080"
     restart: unless-stopped
     container_name: crow-server
+    
   redis:
     image: redis:7
     ports:
@@ -19,6 +21,7 @@ services:
       - REDIS_MAXMEMORY_POLICY=allkeys-lru
     restart: unless-stopped
     container_name: redis
+
   portainer:
     image: portainer/portainer-ce:latest
     ports:
@@ -27,6 +30,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
     restart: unless-stopped
+
   yandex-tank:
     image: yandex/yandex-tank:latest
     volumes:
@@ -38,6 +42,7 @@ services:
     tty: true
     profiles:
       - loadtest
+
 
 volumes:
   portainer_data:
