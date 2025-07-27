@@ -34,16 +34,10 @@ services:
     restart: unless-stopped
 
   yandex-tank:
-    image: yandex/yandex-tank:latest
-    volumes:
-      - ./loadtest:/var/loadtest
-      - $SSH_AUTH_SOCK:/ssh-agent
-    environment:
-      - SSH_AUTH_SOCK=/ssh-agent
-    stdin_open: true
-    tty: true
-    profiles:
-      - loadtest
+    build: ./loadtest
+    container_name: yandex-tank
+    ports:
+      - "3001:3001"
 
 
 volumes:
