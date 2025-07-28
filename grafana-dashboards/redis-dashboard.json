@@ -89,6 +89,7 @@
                 "y": 0
             },
             "id": 2001,
+            "maxDataPoints": 99999,
             "options": {
                 "dataLinks": [],
                 "legend": {

@@ -80,6 +80,7 @@
 
 ## Мониторинг и метрики
 
+- **Алерты**: https://t.me/alerting_from_o11y (стрелять по 1000rps)
 - **Prometheus** (http://localhost:9090/) собирает метрики с crow-server (порт 8081) и других сервисов.
 - **Grafana** (http://localhost:3002/) визуализирует метрики (RPS, latency percentiles, ошибки и др.).
 - Основные метрики crow-server:
@@ -108,3 +109,4 @@ curl http://localhost:8080/api
 ## Авторы и лицензия
 
 - Для учебных и демонстрационных целей
+
